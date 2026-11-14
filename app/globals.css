@@ -5,3 +5,20 @@
 .product-art.viewer{display:block;position:relative}.viewer #bottleViewer{width:100%;height:100%}.viewer-caption{position:absolute;bottom:12px;left:0;right:0;text-align:center;font-size:8px;letter-spacing:.13em;color:#81786b;pointer-events:none}
 
 .viewer canvas{position:relative;inset:auto;width:100%;height:100%}
+/* Touch navigation and small-screen safe areas */
+#scene canvas{touch-action:none}
+.mobile-controls{position:fixed;z-index:5;bottom:max(24px,env(safe-area-inset-bottom));left:max(20px,env(safe-area-inset-left));text-align:center;user-select:none;-webkit-user-select:none;touch-action:none}
+.joystick{width:112px;height:112px;border-radius:50%;border:1px solid #ffffffb0;background:#29271f42;backdrop-filter:blur(5px);position:relative;touch-action:none;box-shadow:0 3px 20px #0002}
+.joystick-ring{position:absolute;inset:22px;border:1px solid #ffffff70;border-radius:50%;pointer-events:none}
+.joystick-knob{position:absolute;width:42px;height:42px;left:calc(50% - 21px);top:calc(50% - 21px);border-radius:50%;background:#f7f2e4c9;border:1px solid #fff;box-shadow:0 2px 8px #0003;pointer-events:none}
+.mobile-controls>span{display:block;color:#fff;font-size:9px;font-weight:700;letter-spacing:.2em;text-shadow:0 1px 5px #333;margin-top:8px}
+.mobile-look-hint{position:fixed;z-index:4;right:max(20px,env(safe-area-inset-right));bottom:max(35px,env(safe-area-inset-bottom));color:white;text-shadow:0 1px 8px #222;font-size:9px;font-weight:700;letter-spacing:.1em;pointer-events:none}.mobile-look-hint b{padding:0 5px}
+@media (max-width:700px){
+ header{padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right));height:68px}
+ .brand{font-size:clamp(11px,3.5vw,15px);gap:7px;letter-spacing:.12em}.brand-mark{font-size:22px}.brand small{font-size:7px;letter-spacing:.18em}.cart-button{padding:11px 12px;gap:7px;font-size:9px}
+ .welcome{padding:70px 24px 75px}.welcome-card{width:100%}.welcome h1{font-size:clamp(38px,10vw,55px);margin:20px 0}.welcome p{font-size:15px;line-height:1.6}.welcome-bottom{left:24px;right:24px;font-size:8px}.welcome-foot{line-height:1.5}
+ .location{top:82px;left:16px;padding:10px 12px}.location-icon{font-size:18px}.location strong{font-size:13px}.location small{font-size:7px}
+ .panel{width:100%;top:auto;bottom:0;max-height:90dvh;border-radius:16px 16px 0 0;padding:48px 24px max(24px,env(safe-area-inset-bottom));overscroll-behavior:contain}.panel .close{top:12px;right:20px;min-width:44px;min-height:44px}.panel h2{font-size:32px}.panel .product-art{height:min(220px,28dvh);margin:16px 0}.panel p{font-size:14px}.panel .primary{min-height:50px}.cart-item{gap:12px}
+ .bottom-right{right:16px;bottom:calc(max(35px,env(safe-area-inset-bottom)) + 33px)}.bottom-right button{background:#534d43a0;width:38px;height:38px}.hint{max-width:70vw;min-width:170px;padding:10px}.hint strong{font-size:15px}
+}
+@media(max-height:500px) and (orientation:landscape){.welcome h1{font-size:34px;margin:10px 0}.welcome p{margin-bottom:12px;font-size:13px}.welcome-foot,.welcome-bottom{display:none}.welcome .primary{padding:14px}.welcome{padding-top:70px;padding-bottom:10px}.panel{max-height:100dvh;width:min(440px,75%);border-radius:0;top:0}.joystick{width:86px;height:86px}.joystick-knob{width:36px;height:36px;left:calc(50% - 18px);top:calc(50% - 18px)}}
