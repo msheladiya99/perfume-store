@@ -55,12 +55,22 @@ const products=[
 {name:'White Oud',slug:'white-oud',price:299,color:0xdec29b,desc:'Eau de Parfum · 50 ml'}];
 const textureLoader=new THREE.TextureLoader();
 for(const product of products){product.label=textureLoader.load(`/assets/products/${product.slug}-label.png`);product.label.colorSpace=THREE.SRGBColorSpace;}
-let interact=[];function bottle(x,y,z,p,scale=1,rotation=0){
- let group=new THREE.Group(); let body=new THREE.Mesh(new THREE.BoxGeometry(.34*scale,.48*scale,.18*scale),new THREE.MeshPhysicalMaterial({color:p.color,metalness:.06,roughness:.16,transparent:true,opacity:.88,clearcoat:1}));body.position.y=.26*scale;body.castShadow=true;group.add(body);
- let neck=new THREE.Mesh(new THREE.CylinderGeometry(.075*scale,.075*scale,.06*scale,16),gold);neck.position.y=.53*scale;group.add(neck);
- let cap=new THREE.Mesh(new THREE.CylinderGeometry(.095*scale,.095*scale,.16*scale,20),black);cap.position.y=.63*scale;group.add(cap);
- let label=new THREE.Mesh(new THREE.PlaneGeometry(.23*scale,.31*scale),new THREE.MeshBasicMaterial({map:p.label}));label.position.set(0,.26*scale,.091*scale);group.add(label);group.position.set(x,y,z);group.rotation.y=rotation;
- group.traverse(o=>{if(o.isMesh){o.userData={type:'product',product:p};interact.push(o)}});scene.add(group)}
+// Layered 3D bottle geometry. All bottles share geometries/materials to keep racks efficient on mobile.
+let interact=[];
+const bottleGlass=new THREE.MeshPhysicalMaterial({color:0xf5f4ee,metalness:.12,roughness:.12,transparent:true,opacity:.34,clearcoat:1,depthWrite:false});
+const bottleBase=new THREE.MeshStandardMaterial({color:0xe8e8df,metalness:.35,roughness:.18,transparent:true,opacity:.65});
+const bottleFluidMaterials=new Map(products.map(p=>[p.slug,new THREE.MeshPhysicalMaterial({color:p.color,metalness:.06,roughness:.18,transparent:true,opacity:p.slug==='godfather'?.93:.7,clearcoat:1})]));
+const bottleLabelMaterials=new Map(products.map(p=>[p.slug,new THREE.MeshBasicMaterial({map:p.label,toneMapped:false})]));
+const sharedBody=new THREE.BoxGeometry(.34,.48,.18), sharedFluid=new THREE.BoxGeometry(.27,.40,.12), sharedBase=new THREE.BoxGeometry(.34,.035,.18), sharedLabel=new THREE.PlaneGeometry(.22,.31),sharedCap=new THREE.CylinderGeometry(.077,.077,.15,20),sharedNeck=new THREE.CylinderGeometry(.065,.065,.045,20),sharedRidge=new THREE.CylinderGeometry(.008,.008,.38,8);
+function bottle(x,y,z,p,scale=1,rotation=0){
+ const group=new THREE.Group();
+ function add(geometry,material,x,y,z){const mesh=new THREE.Mesh(geometry,material);mesh.position.set(x,y,z);mesh.userData={type:'product',product:p};mesh.castShadow=true;group.add(mesh);interact.push(mesh);return mesh}
+ add(sharedFluid,bottleFluidMaterials.get(p.slug),0,.26,0);add(sharedBody,bottleGlass,0,.26,0);add(sharedBase,bottleBase,0,.028,0);
+ add(sharedNeck,gold,0,.525,0);add(sharedCap,black,0,.62,0);
+ add(sharedRidge,bottleBase,-.15,.26,.073);add(sharedRidge,bottleBase,.15,.26,.073);
+ add(sharedLabel,bottleLabelMaterials.get(p.slug),0,.26,.092);
+ group.position.set(x,y,z);group.rotation.y=rotation;group.scale.setScalar(scale);scene.add(group)
+}
 // Back and side perfume shelving, stocked individually.
 function wallRack(x,z,rot=0){const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=rot;scene.add(g);function part(w,h,d,m,a,b,c){let o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.position.set(a,b,c);o.castShadow=true;o.receiveShadow=true;g.add(o)}part(3.4,3.65,.18,mat(0xcbbba5),0,2.05,0);part(3.55,.14,.65,wood,0,.32,.2);for(let y of [.75,1.65,2.55,3.45]){part(3.5,.09,.58,shelfmat,0,y,.2);part(3.5,.025,.025,gold,0,y+.05,.5);for(let i=0;i<6;i++){let p=products[(i+Math.round(y*3)+Math.round(Math.abs(x)))%products.length];let loc=new THREE.Vector3(-1.35+i*.54,y+.05,.25).applyMatrix4((g.updateMatrixWorld(),g.matrixWorld));bottle(loc.x,loc.y,loc.z,p,.8,rot)}}part(.1,3.8,.65,wood,-1.7,2.1,.2);part(.1,3.8,.65,wood,1.7,2.1,.2)}
 wallRack(-7.1,-10.9);wallRack(7.1,-10.9);wallRack(-9.65,-5,Math.PI/2);wallRack(-9.65,2,Math.PI/2);wallRack(9.65,-5,-Math.PI/2);wallRack(9.65,2,-Math.PI/2);
