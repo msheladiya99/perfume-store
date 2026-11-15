@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "cross-env NEXT_TEST_WASM=1 NEXT_TEST_WASM_DIR=./node_modules/@next/swc-wasm-nodejs next dev --webpack -H 0.0.0.0",
-    "build": "cross-env NEXT_TEST_WASM=1 NEXT_TEST_WASM_DIR=./node_modules/@next/swc-wasm-nodejs next build --webpack",
+    "dev": "next dev --webpack -H 0.0.0.0",
+    "build": "next build --webpack",
     "start": "next start -H 0.0.0.0"
   },
   "dependencies": {
