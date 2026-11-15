@@ -510,32 +510,70 @@ export function createBoutiqueShoppingBagProp(): THREE.Group {
 
 function createMiniBottleProp(colorHex: number): THREE.Group {
   const g = new THREE.Group();
+
+  // Solid heavy crystal base
+  const base = new THREE.Mesh(
+    new THREE.BoxGeometry(0.065, 0.02, 0.04),
+    new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.02, transmission: 0.95, thickness: 0.1, ior: 1.52, transparent: true })
+  );
+  base.position.y = 0.01;
+  g.add(base);
+
+  // Outer crystal glass shell
   const glass = new THREE.Mesh(
-    new THREE.BoxGeometry(0.065, 0.11, 0.04),
-    new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.08, transmission: 0.92, transparent: true, opacity: 0.4 })
+    new THREE.BoxGeometry(0.068, 0.10, 0.042),
+    new THREE.MeshPhysicalMaterial({
+      color: 0xffffff,
+      roughness: 0.03,
+      transmission: 0.95,
+      thickness: 0.12,
+      ior: 1.52,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.03,
+      transparent: true,
+      depthWrite: true
+    })
   );
   glass.position.y = 0.055;
   g.add(glass);
 
+  // Inner fluid core
   const fluid = new THREE.Mesh(
-    new THREE.BoxGeometry(0.055, 0.09, 0.03),
-    new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.2, transparent: true, opacity: 0.8 })
+    new THREE.BoxGeometry(0.054, 0.075, 0.028),
+    new THREE.MeshPhysicalMaterial({ color: colorHex, roughness: 0.08, transmission: 0.5, transparent: true, opacity: 0.88, clearcoat: 1 })
   );
-  fluid.position.y = 0.05;
+  fluid.position.y = 0.052;
   g.add(fluid);
 
-  const neck = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.015, 0.015, 0.018, 16),
-    new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.85, roughness: 0.2 })
+  // Internal dip tube
+  const tube = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.0015, 0.0015, 0.075, 8),
+    new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 0.85, transparent: true, opacity: 0.7 })
   );
-  neck.position.y = 0.118;
-  g.add(neck);
+  tube.position.set(0.002, 0.052, 0);
+  g.add(tube);
 
-  const cap = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.02, 0.02, 0.035, 16),
-    new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.3, roughness: 0.25 })
+  // Stepped metallic collar
+  const collarLower = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.018, 0.019, 0.006, 16),
+    new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.94, roughness: 0.14 })
   );
-  cap.position.y = 0.14;
+  collarLower.position.y = 0.108;
+  g.add(collarLower);
+
+  const collarUpper = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.016, 0.016, 0.008, 16),
+    new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.94, roughness: 0.14 })
+  );
+  collarUpper.position.y = 0.114;
+  g.add(collarUpper);
+
+  // Weighted satin black cap with bevelled crown
+  const cap = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.018, 0.018, 0.038, 20),
+    new THREE.MeshStandardMaterial({ color: 0x141414, metalness: 0.22, roughness: 0.35 })
+  );
+  cap.position.y = 0.136;
   g.add(cap);
 
   return g;

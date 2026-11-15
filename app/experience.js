@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import BottleViewer from './BottleViewer';
 import {
   CHARACTER_CONFIG,
@@ -107,6 +108,11 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.25;
 $('#scene').appendChild(renderer.domElement);
+
+const pmremGenerator = new THREE.PMREMGenerator(renderer);
+pmremGenerator.compileEquirectangularShader();
+const roomEnv = new RoomEnvironment();
+scene.environment = pmremGenerator.fromScene(roomEnv, 0.04).texture;
 
 scene.add(new THREE.HemisphereLight(0xfff3dd, 0x766956, 2.1));
 const sun = new THREE.DirectionalLight(0xffedcf, 2.2);
@@ -272,52 +278,225 @@ textPlane('THE SIGNATURE COLLECTION', 2.8, 0.28, 3.8, 0.53, -0.585, { size: 58 }
 
 
 const products = [
-  { name: 'CEO Man', slug: 'ceo-man', price: 299, color: 0xe3e3df, desc: 'Eau de Parfum · 50 ml' },
-  { name: 'Choco Musk', slug: 'choco-musk', price: 299, color: 0xd8a25a, desc: 'Eau de Parfum · 50 ml' },
-  { name: 'Godfather', slug: 'godfather', price: 299, color: 0x870e19, desc: 'Eau de Parfum · 50 ml' },
-  { name: 'Rose of No Man’s Land', slug: 'rose-of-no-mans-land', price: 299, color: 0xe0a59c, desc: 'Eau de Parfum · 50 ml' },
-  { name: 'White London', slug: 'white-london', price: 299, color: 0xe9e4d2, desc: 'Eau de Parfum · 50 ml' },
-  { name: 'White Oud', slug: 'white-oud', price: 299, color: 0xdec29b, desc: 'Eau de Parfum · 50 ml' }
+  { name: 'CEO Man', slug: 'ceo-man', price: 299, color: 0xebf2f8, collar: 'chrome', desc: 'Eau de Parfum · 50 ml' },
+  { name: 'Choco Musk', slug: 'choco-musk', price: 299, color: 0xd89530, collar: 'gold', desc: 'Eau de Parfum · 50 ml' },
+  { name: 'Godfather', slug: 'godfather', price: 299, color: 0x8a0b16, collar: 'copper', desc: 'Eau de Parfum · 50 ml' },
+  { name: 'Rose of No Man’s Land', slug: 'rose-of-no-mans-land', price: 299, color: 0xdf848e, collar: 'rosegold', desc: 'Eau de Parfum · 50 ml' },
+  { name: 'White London', slug: 'white-london', price: 299, color: 0xeee7dc, collar: 'chrome', desc: 'Eau de Parfum · 50 ml' },
+  { name: 'White Oud', slug: 'white-oud', price: 299, color: 0xdca868, collar: 'gold', desc: 'Eau de Parfum · 50 ml' }
 ];
 
 const textureLoader = new THREE.TextureLoader();
 for (const product of products) {
   product.label = textureLoader.load(`/assets/products/${product.slug}-label.png`);
   product.label.colorSpace = THREE.SRGBColorSpace;
+  product.label.anisotropy = 16;
 }
 
 let interact = [];
-const bottleGlass = new THREE.MeshPhysicalMaterial({ color: 0xf5f4ee, metalness: 0.12, roughness: 0.12, transparent: true, opacity: 0.34, clearcoat: 1, depthWrite: false });
-const bottleBase = new THREE.MeshStandardMaterial({ color: 0xe8e8df, metalness: 0.35, roughness: 0.18, transparent: true, opacity: 0.65 });
-const bottleFluidMaterials = new Map(products.map((p) => [p.slug, new THREE.MeshPhysicalMaterial({ color: p.color, metalness: 0.06, roughness: 0.18, transparent: true, opacity: p.slug === 'godfather' ? 0.93 : 0.7, clearcoat: 1 })]));
-const bottleLabelMaterials = new Map(products.map((p) => [p.slug, new THREE.MeshBasicMaterial({ map: p.label, toneMapped: false })]));
-const sharedBody = new THREE.BoxGeometry(0.34, 0.48, 0.18),
-  sharedFluid = new THREE.BoxGeometry(0.27, 0.4, 0.12),
-  sharedBase = new THREE.BoxGeometry(0.34, 0.035, 0.18),
-  sharedLabel = new THREE.PlaneGeometry(0.22, 0.31),
-  sharedCap = new THREE.CylinderGeometry(0.077, 0.077, 0.15, 20),
-  sharedNeck = new THREE.CylinderGeometry(0.065, 0.065, 0.045, 20),
-  sharedRidge = new THREE.CylinderGeometry(0.008, 0.008, 0.38, 8);
+
+// ============================================================================
+// PHOTOREALISTIC LUXURY PERFUME BOTTLE ENGINE (Matches Studio Photography)
+// Features:
+// - Faceted crystal glass flacon with 4 chamfered vertical bevels
+// - Heavy solid crystal base pedestal (thick glass bottom)
+// - Inner fluid core with custom translucency and refraction per perfume
+// - Internal spray pump mechanism and translucent dip tube immersed in fluid
+// - Stepped metallic collar (polished chrome, 24K gold, rose gold, copper)
+// - Weighted satin black luxury cap with chamfered top crown
+// - Embossed physical paper label with metallic foil trim border
+// ============================================================================
+
+function createBevelledFlaconShape(w, d, c) {
+  const shape = new THREE.Shape();
+  const hw = w / 2, hd = d / 2;
+  shape.moveTo(-hw + c, hd);
+  shape.lineTo(hw - c, hd);
+  shape.lineTo(hw, hd - c);
+  shape.lineTo(hw, -hd + c);
+  shape.lineTo(hw - c, -hd);
+  shape.lineTo(-hw + c, -hd);
+  shape.lineTo(-hw, -hd + c);
+  shape.lineTo(-hw, hd - c);
+  shape.closePath();
+  return shape;
+}
+
+// 1. Outer Faceted Crystal Glass Shell (with 4 Corner Chamfers and Top/Bottom Bevels)
+const outerShape = createBevelledFlaconShape(0.38, 0.22, 0.038);
+const sharedOuterGlass = new THREE.ExtrudeGeometry(outerShape, {
+  depth: 0.46,
+  bevelEnabled: true,
+  bevelThickness: 0.016,
+  bevelSize: 0.016,
+  bevelSegments: 2
+});
+sharedOuterGlass.rotateX(-Math.PI / 2);
+sharedOuterGlass.translate(0, 0.016, 0);
+
+// 2. Thick Crystal Base Pedestal (Solid Heavy Glass Bottom)
+const baseShape = createBevelledFlaconShape(0.36, 0.20, 0.032);
+const sharedCrystalBase = new THREE.ExtrudeGeometry(baseShape, { depth: 0.082, bevelEnabled: false });
+sharedCrystalBase.rotateX(-Math.PI / 2);
+sharedCrystalBase.translate(0, 0.016, 0);
+
+// 3. Inner Fluid Reservoir Core
+const fluidShape = createBevelledFlaconShape(0.31, 0.15, 0.024);
+const sharedFluid = new THREE.ExtrudeGeometry(fluidShape, { depth: 0.36, bevelEnabled: false });
+sharedFluid.rotateX(-Math.PI / 2);
+sharedFluid.translate(0, 0.088, 0);
+
+// 4. Fluid Meniscus Top
+const sharedMeniscus = new THREE.PlaneGeometry(0.29, 0.13);
+sharedMeniscus.rotateX(-Math.PI / 2);
+sharedMeniscus.translate(0, 0.443, 0);
+
+// 5. Internal Spray Pump Nozzle Mechanism
+const sharedPump = new THREE.CylinderGeometry(0.022, 0.022, 0.05, 16);
+sharedPump.translate(0, 0.46, 0);
+
+// 6. Translucent Internal Dip Tube
+const sharedDipTube = new THREE.CylinderGeometry(0.003, 0.003, 0.35, 10);
+sharedDipTube.translate(0.005, 0.26, 0);
+
+// 7. Stepped Metallic Collar Rings
+const sharedCollarLower = new THREE.CylinderGeometry(0.084, 0.088, 0.024, 32);
+sharedCollarLower.translate(0, 0.505, 0);
+const sharedCollarUpper = new THREE.CylinderGeometry(0.072, 0.072, 0.022, 32);
+sharedCollarUpper.translate(0, 0.528, 0);
+
+// 8. Weighted Obsidian Black Luxury Cap
+const sharedCapBody = new THREE.CylinderGeometry(0.085, 0.085, 0.185, 32);
+sharedCapBody.translate(0, 0.635, 0);
+const sharedCapCrown = new THREE.CylinderGeometry(0.081, 0.085, 0.015, 32);
+sharedCapCrown.translate(0, 0.732, 0);
+
+// 9. Embossed Physical Label (Foil Trim Border, Front Face & Opaque Back)
+const sharedLabelFoil = new THREE.BoxGeometry(0.252, 0.342, 0.004);
+sharedLabelFoil.translate(0, 0.262, 0.114);
+
+const sharedLabelFront = new THREE.PlaneGeometry(0.244, 0.334);
+sharedLabelFront.translate(0, 0.262, 0.117);
+
+const sharedLabelBack = new THREE.PlaneGeometry(0.244, 0.334);
+sharedLabelBack.rotateY(Math.PI);
+sharedLabelBack.translate(0, 0.262, 0.112);
+
+// Master Materials
+const crystalGlass = new THREE.MeshPhysicalMaterial({
+  color: 0xffffff,
+  metalness: 0.0,
+  roughness: 0.012,
+  transmission: 0.94,
+  thickness: 0.18,
+  ior: 1.52,
+  specularIntensity: 1.4,
+  clearcoat: 1.0,
+  clearcoatRoughness: 0.02,
+  transparent: true,
+  depthWrite: false
+});
+
+const crystalBaseMaterial = new THREE.MeshPhysicalMaterial({
+  color: 0xffffff,
+  metalness: 0.0,
+  roughness: 0.015,
+  transmission: 0.96,
+  thickness: 0.35,
+  ior: 1.52,
+  clearcoat: 1.0,
+  clearcoatRoughness: 0.02,
+  transparent: true,
+  depthWrite: true
+});
+
+const collarMaterials = new Map([
+  ['chrome', new THREE.MeshStandardMaterial({ color: 0xf4f6f8, metalness: 0.98, roughness: 0.08 })],
+  ['gold', new THREE.MeshStandardMaterial({ color: 0xd6b040, metalness: 0.95, roughness: 0.10 })],
+  ['rosegold', new THREE.MeshStandardMaterial({ color: 0xc88575, metalness: 0.93, roughness: 0.14 })],
+  ['copper', new THREE.MeshStandardMaterial({ color: 0xb86c4f, metalness: 0.93, roughness: 0.15 })]
+]);
+
+const pumpMaterial = new THREE.MeshStandardMaterial({ color: 0xeeeeee, metalness: 0.95, roughness: 0.12 });
+const dipTubeMaterial = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 0.88, transparent: true, opacity: 0.68, roughness: 0.10, thickness: 0.04 });
+const capMaterial = new THREE.MeshStandardMaterial({ color: 0x141414, roughness: 0.32, metalness: 0.20 });
+const labelBackMaterial = new THREE.MeshStandardMaterial({ color: 0xf6f2ea, roughness: 0.85 });
+
+const bottleFluidMaterials = new Map(products.map((p) => {
+  const isGodfather = p.slug === 'godfather';
+  const isChoco = p.slug === 'choco-musk';
+  const isOud = p.slug === 'white-oud';
+  return [
+    p.slug,
+    new THREE.MeshPhysicalMaterial({
+      color: p.color,
+      metalness: 0.02,
+      roughness: 0.04,
+      transmission: isGodfather ? 0.35 : (isChoco || isOud ? 0.55 : 0.70),
+      transparent: true,
+      opacity: isGodfather ? 0.96 : 0.90,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.03,
+      ior: 1.40,
+      depthWrite: true
+    })
+  ];
+}));
+
+const bottleLabelMaterials = new Map(products.map((p) => [
+  p.slug,
+  new THREE.MeshStandardMaterial({
+    map: p.label,
+    roughness: 0.70,
+    metalness: 0.05,
+    toneMapped: true
+  })
+]));
 
 function bottle(x, y, z, p, scale = 1, rotation = 0) {
   const group = new THREE.Group();
-  function add(geometry, material, a, b, c) {
+
+  function add(geometry, material, isClickable = true, renderOrder = 1) {
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.set(a, b, c);
-    mesh.userData = { type: 'product', product: p };
     mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.renderOrder = renderOrder;
+    if (isClickable) {
+      mesh.userData = { type: 'product', product: p };
+      interact.push(mesh);
+    }
     group.add(mesh);
-    interact.push(mesh);
     return mesh;
   }
-  add(sharedFluid, bottleFluidMaterials.get(p.slug), 0, 0.26, 0);
-  add(sharedBody, bottleGlass, 0, 0.26, 0);
-  add(sharedBase, bottleBase, 0, 0.028, 0);
-  add(sharedNeck, gold, 0, 0.525, 0);
-  add(sharedCap, black, 0, 0.62, 0);
-  add(sharedRidge, bottleBase, -0.15, 0.26, 0.073);
-  add(sharedRidge, bottleBase, 0.15, 0.26, 0.073);
-  add(sharedLabel, bottleLabelMaterials.get(p.slug), 0, 0.26, 0.092);
+
+  // 1. Thick solid crystal base pedestal
+  add(sharedCrystalBase, crystalBaseMaterial, false, 1);
+
+  // 2. Liquid core & surface meniscus
+  add(sharedFluid, bottleFluidMaterials.get(p.slug), true, 1);
+  add(sharedMeniscus, bottleFluidMaterials.get(p.slug), false, 1);
+
+  // 3. Internal dip tube and pump nozzle
+  add(sharedDipTube, dipTubeMaterial, false, 1);
+  add(sharedPump, pumpMaterial, false, 1);
+
+  // 4. Embossed foil frame & front/back label
+  const collarMat = collarMaterials.get(p.collar || 'gold');
+  add(sharedLabelFoil, collarMat, false, 2);
+  add(sharedLabelFront, bottleLabelMaterials.get(p.slug), true, 3);
+  add(sharedLabelBack, labelBackMaterial, false, 2);
+
+  // 5. Outer crystal faceted flacon with chamfers
+  add(sharedOuterGlass, crystalGlass, false, 10);
+
+  // 6. Stepped metallic collar (matching collar metal)
+  add(sharedCollarLower, collarMat, false, 4);
+  add(sharedCollarUpper, collarMat, false, 4);
+
+  // 7. Weighted satin black cap
+  add(sharedCapBody, capMaterial, false, 4);
+  add(sharedCapCrown, capMaterial, false, 4);
+
   group.position.set(x, y, z);
   group.rotation.y = rotation;
   group.scale.setScalar(scale);
@@ -699,8 +878,8 @@ function productPanel(p) {
     <h2>${p.name}</h2>
     <div class="family">EAU DE PARFUM · 50 ML</div>
     <p>${p.desc}</p>
-    <img class="product-photo" src="/assets/products/${p.slug}.webp" alt="${p.name} by Zevaro Perfumes">
-    <p class="photo-caption">YOUR ZEVARO BOTTLE</p>
+    <img class="product-photo" src="/assets/products/${p.slug}-real.jpg" alt="${p.name} by Zevaro Perfumes">
+    <p class="photo-caption">STUDIO PHOTOGRAPH · 50 ML EAU DE PARFUM</p>
     <div class="price-row">
       <strong>₹${p.price}.00</strong>
       <span>50 ML · EAU DE PARFUM</span>
@@ -709,7 +888,11 @@ function productPanel(p) {
     <div class="panel-note">A LITTLE LUXURY, JUST FOR YOU</div>
   `);
   productViewerRoot = createRoot($('#bottleViewer'));
-  productViewerRoot.render(React.createElement(BottleViewer, { color: '#' + p.color.toString(16).padStart(6, '0'), label: '/assets/products/' + p.slug + '-label.png' }));
+  productViewerRoot.render(React.createElement(BottleViewer, {
+    color: '#' + p.color.toString(16).padStart(6, '0'),
+    label: '/assets/products/' + p.slug + '-label.png',
+    collar: p.collar || 'gold'
+  }));
   $('#addCart').onclick = () => {
     cart.push(p);
     updateCart();
